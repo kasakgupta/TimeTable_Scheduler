@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEP Schedulers - AI Timetable Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 2;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            flex-wrap: wrap;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            position: relative;
+            min-width: 150px;
+        }
+        
+        .nav-tab:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .nav-tab.active {
+            background: white;
+            color: #2196F3;
+            border-bottom: 3px solid #2196F3;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e9ecef;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(33, 150, 243, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+        
+        .timetable-grid {
+            overflow-x: auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timetable-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        
+        .timetable-table th,
+        .timetable-table td {
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        
+        .timetable-table th {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .timetable-slot {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            min-height: 80px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .timetable-slot:hover {
+            background: #e3f2fd;
+            border-color: #2196F3;
+        }
+        
+        .timetable-slot.occupied {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+        
+        .conflict-heatmap {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .heatmap-cell {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+        
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+        }
+        
+        .heatmap-low { background: #4CAF50; }
+        .heatmap-medium { background: #ff9800; }
+        .heatmap-high { background: #f44336; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9ecef;
+            border-top: 4px solid #2196F3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border-color: #4CAF50;
+            color: #155724;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ff9800;
+            color: #856404;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            border-color: #f44336;
+            color: #721c24;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .feature-list li::before {
+            content: '✓';
+            color: #4CAF50;
+            font-weight: bold;
+            width: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-tab {
+                font-size: 0.9rem;
+                padding: 12px 15px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 NEP Schedulers</h1>
+            <p>AI-Powered Timetable Generator for NEP 2020 Multidisciplinary Education</p>
+        </div>
+        
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('dashboard')">Admin Dashboard</button>
+            <button class="nav-tab" onclick="showTab('ai-engine')">AI Engine</button>
+            <button class="nav-tab" onclick="showTab('timetable')">Timetable View</button>
+            <button class="nav-tab" onclick="showTab('analytics')">Analytics</button>
+            <button class="nav-tab" onclick="showTab('integration')">Integration</button>
+        </div>
+        
+        <!-- Admin Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #4CAF50, #45a049);">📊</div>
+                        <h3 class="card-title">Data Import</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Upload Student Data</label>
+                        <input type="file" class="form-control" accept=".csv,.xlsx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Upload Faculty Data</label>
+                        <input type="file" class="form-control" accept=".csv,.xlsx">
+                    </div>
+                    <button class="btn btn-primary" onclick="importData()">Import Data</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #ff9800, #f57c00);">⚙️</div>
+                        <h3 class="card-title">Quick Settings</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Program Type</label>
+                        <select class="form-control">
+                            <option>B.Ed.</option>
+                            <option>M.Ed.</option>
+                            <option>FYUP</option>
+                            <option>ITEP</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Semester</label>
+                        <select class="form-control">
+                            <option>Semester 1</option>
+                            <option>Semester 2</option>
+                            <option>Semester 3</option>
+                            <option>Semester 4</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success" onclick="generateTimetable()">Generate Timetable</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #2196F3, #21CBF3);">🚨</div>
+                        <h3 class="card-title">Conflict Monitor</h3>
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>All Clear!</strong> No conflicts detected.
+                    </div>
+                    <div class="conflict-heatmap">
+                        <div class="heatmap-cell heatmap-low">Mon</div>
+                        <div class="heatmap-cell heatmap-low">Tue</div>
+                        <div class="heatmap-cell heatmap-medium">Wed</div>
+                        <div class="heatmap-cell heatmap-low">Thu</div>
+                        <div class="heatmap-cell heatmap-high">Fri</div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #9c27b0, #8e24aa);">🤖</div>
+                        <h3 class="card-title">AI Status</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">94%</span>
+                            <span class="stat-label">Optimization</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">0</span>
+                            <span class="stat-label">Conflicts</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 94%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- AI Engine Tab -->
+        <div id="ai-engine" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #4CAF50, #45a049);">🧠</div>
+                        <h3 class="card-title">Hybrid Algorithm</h3>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Greedy Algorithm for initial placement</li>
+                        <li>Genetic Algorithm for optimization</li>
+                        <li>Real-time conflict resolution</li>
+                        <li>Multi-objective optimization</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="runOptimization()">Run Optimization</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #2196F3, #21CBF3);">🔄</div>
+                        <h3 class="card-title">Auto-Reallocation</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Faculty Leave</label>
+                        <input type="text" class="form-control" placeholder="Enter faculty name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Room Unavailable</label>
+                        <input type="text" class="form-control" placeholder="Enter room number">
+                    </div>
+                    <button class="btn btn-warning" onclick="reallocate()">Auto-Reallocate</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #4CAF50, #45a049);">🌱</div>
+                        <h3 class="card-title">Green Optimization</h3>
+                    </div>
+                    <p>Minimize faculty movement between classes</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 87%;"></div>
+                    </div>
+                    <p style="margin-top: 10px;">87% Movement Reduction Achieved</p>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #ff9800, #f57c00);">💪</div>
+                        <h3 class="card-title">Fatigue-Free Scheduling</h3>
+                    </div>
+                    <ul class="feature-list">
+                        <li>No back-to-back heavy subjects</li>
+                        <li>Balanced daily workload</li>
+                        <li>Optimal break intervals</li>
+                        <li>Faculty wellness priority</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timetable View Tab -->
+        <div id="timetable" class="tab-content">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(45deg, #2196F3, #21CBF3);">📅</div>
+                    <h3 class="card-title">Interactive Timetable Editor</h3>
+                </div>
+                <div class="timetable-grid">
+                    <table class="timetable-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Monday</th>
+                                <th>Tuesday</th>
+                                <th>Wednesday</th>
+                                <th>Thursday</th>
+                                <th>Friday</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>9:00-10:00</strong></td>
+                                <td><div class="timetable-slot occupied">Mathematics<br>Dr. Smith<br>Room 101</div></td>
+                                <td><div class="timetable-slot occupied">Physics<br>Dr. Johnson<br>Lab 201</div></td>
+                                <td><div class="timetable-slot occupied">Chemistry<br>Dr. Brown<br>Lab 301</div></td>
+                                <td><div class="timetable-slot occupied">English<br>Prof. Davis<br>Room 102</div></td>
+                                <td><div class="timetable-slot occupied">History<br>Dr. Wilson<br>Room 103</div></td>
+                            </tr>
+                            <tr>
+                                <td><strong>10:00-11:00</strong></td>
+                                <td><div class="timetable-slot occupied">Physics Lab<br>Dr. Johnson<br>Lab 201</div></td>
+                                <td><div class="timetable-slot occupied">Mathematics<br>Dr. Smith<br>Room 101</div></td>
+                                <td><div class="timetable-slot">Click to assign</div></td>
+                                <td><div class="timetable-slot occupied">Chemistry Lab<br>Dr. Brown<br>Lab 301</div></td>
+                                <td><div class="timetable-slot occupied">English<br>Prof. Davis<br>Room 102</div></td>
+                            </tr>
+                            <tr>
+                                <td><strong>11:00-12:00</strong></td>
+                                <td><div class="timetable-slot">Click to assign</div></td>
+                                <td><div class="timetable-slot occupied">History<br>Dr. Wilson<br>Room 103</div></td>
+                                <td><div class="timetable-slot occupied">Mathematics<br>Dr. Smith<br>Room 101</div></td>
+                                <td><div class="timetable-slot">Click to assign</div></td>
+                                <td><div class="timetable-slot occupied">Physics<br>Dr. Johnson<br>Room 104</div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="btn btn-success" onclick="saveTimetable()">Save Timetable</button>
+                    <button class="btn btn-primary" onclick="exportPDF()">Export PDF</button>
+                    <button class="btn btn-warning" onclick="exportExcel()">Export Excel</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #9c27b0, #8e24aa);">📊</div>
+                        <h3 class="card-title">NEP Compliance</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">100%</span>
+                            <span class="stat-label">Major Courses</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">95%</span>
+                            <span class="stat-label">Minor Courses</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">98%</span>
+                            <span class="stat-label">Skill Courses</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">92%</span>
+                            <span class="stat-label">Value Added</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #4CAF50, #45a049);">⚡</div>
+                        <h3 class="card-title">Resource Utilization</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Faculty Utilization: 87%</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 87%;"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Room Utilization: 92%</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 92%;"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Lab Utilization: 78%</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 78%;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #ff9800, #f57c00);">📈</div>
+                        <h3 class="card-title">Performance Metrics</h3>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Generation Time: 2.3 minutes</li>
+                        <li>Conflict Resolution: 100%</li>
+                        <li>Student Satisfaction: 96%</li>
+                        <li>Faculty Satisfaction: 94%</li>
+                        <li>Admin Approval: 98%</li>
+                    </ul>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #2196F3, #21CBF3);">🎯</div>
+                        <h3 class="card-title">Optimization Goals</h3>
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>Green Target:</strong> 85% movement reduction achieved
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>Fatigue-Free:</strong> No back-to-back heavy subjects
+                    </div>
+                    <div class="alert alert-warning">
+                        <strong>Room Efficiency:</strong> 92% utilization (target: 95%)
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Integration Tab -->
+        <div id="integration" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #4CAF50, #45a049);">📱</div>
+                        <h3 class="card-title">WhatsApp Bot</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bot Status</label>
+                        <div class="alert alert-success">
+                            ✅ WhatsApp Bot Active - 247 users connected
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Quick Commands</label>
+                        <ul class="feature-list">
+                            <li>/timetable - Get your timetable</li>
+                            <li>/today - Today's schedule</li>
+                            <li>/room - Check room availability</li>
+                            <li>/faculty - Faculty schedule</li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-success" onclick="testBot()">Test Bot</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #2196F3, #21CBF3);">🔗</div>
+                        <h3 class="card-title">API Integration</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Academic Management System</label>
+                        <select class="form-control">
+                            <option>Select ERP System</option>
+                            <option>Campus Management</option>
+                            <option>Student Information System</option>
+                            <option>University ERP</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-success">
+                        🔄 REST API Ready - 15 endpoints available
+                    </div>
+                    <button class="btn btn-primary" onclick="connectERP()">Connect ERP</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #ff9800, #f57c00);">📧</div>
+                        <h3 class="card-title">Notification System</h3>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Email notifications to faculty</li>
+                        <li>SMS alerts for changes</li>
+                        <li>Push notifications via app</li>
+                        <li>WhatsApp broadcast messages</li>
+                    </ul>
+                    <div class="form-group">
+                        <label class="form-label">Last Broadcast: 2 hours ago</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                        <small>267 recipients reached successfully</small>
+                    </div>
+                    <button class="btn btn-warning" onclick="sendBroadcast()">Send Broadcast</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(45deg, #9c27b0, #8e24aa);">👥</div>
+                        <h3 class="card-title">Personal Views</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">156</span>
+                            <span class="stat-label">Students</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">23</span>
+                            <span class="stat-label">Faculty</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Generate Personal Timetables</label>
+                        <button class="btn btn-success" onclick="generatePersonal()">Generate All</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-card" style="margin-top: 20px;">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(45deg, #4CAF50, #45a049);">🚀</div>
+                    <h3 class="card-title">System Integration Status</h3>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="alert alert-success">
+                        <strong>Database:</strong> PostgreSQL connected - 1,247 records
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>Cache:</strong> Redis active - 94% hit rate
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>Storage:</strong> AWS S3 connected - 2.1GB used
+                    </div>
+                    <div class="alert alert-warning">
+                        <strong>API Rate Limit:</strong> 847/1000 calls remaining
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+        
+        // Mock functions for interactivity
+        function importData() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showAlert('success', 'Data imported successfully! 1,247 records processed.');
+                updateStats();
+            }, 2000);
+        }
+        
+        function generateTimetable() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showAlert('success', 'Timetable generated successfully in 2.3 minutes! Zero conflicts detected.');
+                updateTimetable();
+                updateAnalytics();
+            }, 3000);
+        }
+        
+        function runOptimization() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showAlert('success', 'AI Optimization completed! 94% efficiency achieved.');
+                updateProgress();
+            }, 2500);
+        }
+        
+        function reallocate() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showAlert('success', 'Auto-reallocation completed! Alternative arrangements made.');
+            }, 1500);
+        }
+        
+        function saveTimetable() {
+            showAlert('success', 'Timetable saved successfully!');
+        }
+        
+        function exportPDF() {
+            showAlert('success', 'PDF export initiated! Download will start shortly.');
+        }
+        
+        function exportExcel() {
+            showAlert('success', 'Excel export initiated! Download will start shortly.');
+        }
+        
+        function testBot() {
+            showAlert('success', 'WhatsApp Bot test message sent! Response time: 0.8s');
+        }
+        
+        function connectERP() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showAlert('success', 'ERP system connected successfully! Data sync initiated.');
+            }, 2000);
+        }
+        
+        function sendBroadcast() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showAlert('success', 'Broadcast sent to 267 recipients! Delivery rate: 98.5%');
+            }, 1500);
+        }
+        
+        function generatePersonal() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showAlert('success', 'Personal timetables generated for all users! 179 PDFs created.');
+            }, 3000);
+        }
+        
+        // Utility functions
+        function showLoading() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<div class="spinner"></div><span>Processing...</span>';
+            loadingDiv.id = 'loading-indicator';
+            document.body.appendChild(loadingDiv);
+            
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            overlay.id = 'loading-overlay';
+            overlay.appendChild(loadingDiv);
+            document.body.appendChild(overlay);
+        }
+        
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+        
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1001;
+                max-width: 400px;
+                animation: slideIn 0.5s ease;
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                alertDiv.style.animation = 'slideOut 0.5s ease';
+                setTimeout(() => alertDiv.remove(), 500);
+            }, 5000);
+        }
+        
+        function updateStats() {
+            // Simulate updating statistics
+            const statNumbers = document.querySelectorAll('.stat-number');
+            statNumbers.forEach((stat, index) => {
+                if (stat.textContent !== '0') {
+                    const currentValue = parseInt(stat.textContent);
+                    const newValue = Math.min(currentValue + Math.floor(Math.random() * 5), 100);
+                    stat.textContent = newValue + (stat.textContent.includes('%') ? '%' : '');
+                }
+            });
+        }
+        
+        function updateProgress() {
+            const progressBars = document.querySelectorAll('.progress-fill');
+            progressBars.forEach(bar => {
+                const currentWidth = parseInt(bar.style.width);
+                const newWidth = Math.min(currentWidth + Math.floor(Math.random() * 10), 100);
+                bar.style.width = newWidth + '%';
+            });
+        }
+        
+        function updateTimetable() {
+            // Simulate updating timetable slots
+            const emptySlots = document.querySelectorAll('.timetable-slot:not(.occupied)');
+            if (emptySlots.length > 0) {
+                const randomSlot = emptySlots[Math.floor(Math.random() * emptySlots.length)];
+                randomSlot.classList.add('occupied');
+                randomSlot.innerHTML = 'AI Generated<br>Subject<br>Room TBD';
+            }
+        }
+        
+        function updateAnalytics() {
+            // Update compliance percentages
+            const complianceStats = document.querySelectorAll('#analytics .stat-number');
+            complianceStats.forEach(stat => {
+                if (stat.textContent.includes('%')) {
+                    const current = parseInt(stat.textContent);
+                    const updated = Math.min(current + Math.floor(Math.random() * 3), 100);
+                    stat.textContent = updated + '%';
+                }
+            });
+        }
+        
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initialize with some dynamic content
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add some initial animations
+            const cards = document.querySelectorAll('.dashboard-card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+                card.style.animation = 'fadeIn 0.6s ease forwards';
+            });
+            
+            // Make timetable slots interactive
+            const timetableSlots = document.querySelectorAll('.timetable-slot:not(.occupied)');
+            timetableSlots.forEach(slot => {
+                slot.addEventListener('click', function() {
+                    if (!this.classList.contains('occupied')) {
+                        const subject = prompt('Enter subject name:');
+                        const faculty = prompt('Enter faculty name:');
+                        const room = prompt('Enter room number:');
+                        
+                        if (subject && faculty && room) {
+                            this.classList.add('occupied');
+                            this.innerHTML = `${subject}<br>${faculty}<br>Room ${room}`;
+                            showAlert('success', 'Slot assigned successfully!');
+                        }
+                    }
+                });
+            });
+            
+            // Add real-time clock
+            setInterval(updateClock, 1000);
+            updateClock();
+        });
+        
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const dateString = now.toLocaleDateString();
+            
+            // Update header if clock element exists
+            let clockElement = document.getElementById('current-time');
+            if (!clockElement) {
+                clockElement = document.createElement('div');
+                clockElement.id = 'current-time';
+                clockElement.style.cssText = `
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    color: white;
+                    font-size: 0.9rem;
+                    opacity: 0.8;
+                `;
+                document.querySelector('.header').appendChild(clockElement);
+            }
+            clockElement.innerHTML = `${dateString}<br>${timeString}`;
+        }
+    </script>
+</body>
+</html>
